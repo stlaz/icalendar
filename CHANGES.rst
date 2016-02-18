@@ -13,6 +13,8 @@ New:
 Fixes:
 
 - *add item here*
+- RDATE with PERIOD value type should now be accepted correctly
+  [stlaz]
 
 
 3.9.2 (2016-02-05)
