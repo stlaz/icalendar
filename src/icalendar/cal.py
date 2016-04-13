@@ -135,14 +135,19 @@ class Component(CaselessDict):
         if isinstance(value, types_factory.all_types):
             # Don't encode already encoded values.
             return value
-        klass = types_factory.for_property(name)
-        obj = klass(value)
         if parameters:
             if isinstance(parameters, dict):
                 params = Parameters()
                 for key, item in parameters.items():
                     params[key] = item
                 parameters = params
+        klass = types_factory.for_property(
+            name, parameters.get('VALUE') if parameters else None)
+        if types_factory.is_list_property(name):
+            obj = vDDDLists(value, klass)
+        else:
+            obj = klass(value)
+        if parameters:
             assert isinstance(parameters, Parameters)
             obj.params = parameters
         return obj
@@ -179,7 +184,7 @@ class Component(CaselessDict):
 
         # encode value
         if encode and isinstance(value, list) \
-                and name.lower() not in ['rdate', 'exdate']:
+                and not types_factory.is_list_property(name):
             # Individually convert each value to an ical type except rdate and
             # exdate, where lists of dates might be passed to vDDDLists.
             value = [self._encode(name, v, parameters, encode) for v in value]
@@ -363,7 +368,6 @@ class Component(CaselessDict):
                     _timezone_cache[component['TZID']] = component.to_tz()
             # we are adding properties to the current top of the stack
             else:
-                factory = types_factory.for_property(name)
                 component = stack[-1] if stack else None
                 if not component:
                     raise ValueError('Property "{prop}" does not have '
@@ -371,10 +375,18 @@ class Component(CaselessDict):
                 datetime_names = ('DTSTART', 'DTEND', 'RECURRENCE-ID', 'DUE',
                                   'FREEBUSY', 'RDATE', 'EXDATE')
                 try:
-                    if name in datetime_names and 'TZID' in params:
-                        vals = factory(factory.from_ical(vals, params['TZID']))
+                    factory = types_factory.for_property(name,
+                                                         params.get('VALUE'))
+                    if types_factory.is_list_property(name):
+                        vals = vDDDLists(
+                            vDDDLists.from_ical(vals, factory,
+                                params.get('TZID')))
                     else:
-                        vals = factory(factory.from_ical(vals))
+                        if name in datetime_names and 'TZID' in params:
+                            vals = factory(
+                                factory.from_ical(vals, params['TZID']))
+                        else:
+                            vals = factory(factory.from_ical(vals))
                 except ValueError as e:
                     if not component.ignore_exceptions:
                         raise

@@ -7,6 +7,9 @@ Changelog
 New:
 
 - *add item here*
+- Added strong typing of property values. Unknown properties with VALUE parameter
+  should now be represented as the appropriate type
+  [stlaz]
 - Updated components description to better comply with RFC 5545.
   [stlaz]
 
